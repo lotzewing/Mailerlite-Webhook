@@ -6,12 +6,10 @@ exports.handler = async function(event, context) {
     'Content-Type': 'application/json'
   };
 
-  // Handle CORS preflight
   if (event.httpMethod === 'OPTIONS') {
     return { statusCode: 200, headers, body: '' };
   }
 
-  // Handle GET requests
   if (event.httpMethod === 'GET') {
     return {
       statusCode: 200,
@@ -20,28 +18,26 @@ exports.handler = async function(event, context) {
     };
   }
 
-  // Handle POST requests
   if (event.httpMethod === 'POST') {
     try {
       console.log('=== RAW REQUEST ===');
-      console.log('Headers:', event.headers);
       console.log('Body:', event.body);
       
       const data = JSON.parse(event.body);
       console.log('Parsed data:', data);
       
-      // Framer might send the email in different fields
-      let email = data.email || data.fields?.email || data.data?.email;
+      // Handle Framer's capital "E" format
+      let email = data.Email || data.email || data.fields?.email || data.data?.email;
       
       console.log('Extracted email:', email);
 
       if (!email) {
-        console.log('Available data keys:', Object.keys(data));
         return {
           statusCode: 400,
           headers,
           body: JSON.stringify({ 
-            error: 'No email found',
+            success: false,
+            error: 'No email found in request',
             received_data: data 
           })
         };
@@ -52,7 +48,10 @@ exports.handler = async function(event, context) {
         return {
           statusCode: 400,
           headers,
-          body: JSON.stringify({ error: 'Invalid email format' })
+          body: JSON.stringify({ 
+            success: false,
+            error: 'Invalid email format' 
+          })
         };
       }
 
@@ -61,10 +60,14 @@ exports.handler = async function(event, context) {
         return {
           statusCode: 500,
           headers,
-          body: JSON.stringify({ error: 'API key not configured' })
+          body: JSON.stringify({ 
+            success: false,
+            error: 'API key not configured' 
+          })
         };
       }
 
+      console.log('Adding to MailerLite:', email);
       const mailerliteResponse = await fetch('https://connect.mailerlite.com/api/subscribers', {
         method: 'POST',
         headers: {
@@ -78,18 +81,25 @@ exports.handler = async function(event, context) {
       console.log('MailerLite status:', mailerliteResponse.status);
 
       if (mailerliteResponse.ok) {
+        console.log('Successfully added to MailerLite');
         return {
           statusCode: 200,
           headers,
-          body: JSON.stringify({ success: true })
+          body: JSON.stringify({ 
+            success: true,
+            message: 'Subscribed successfully' 
+          })
         };
       } else {
         const errorText = await mailerliteResponse.text();
-        console.log('MailerLite error:', errorText);
+        console.log('MailerLite error response:', errorText);
         return {
           statusCode: 400,
           headers,
-          body: JSON.stringify({ error: 'MailerLite subscription failed' })
+          body: JSON.stringify({ 
+            success: false,
+            error: 'Failed to add to mailing list' 
+          })
         };
       }
 
@@ -98,10 +108,20 @@ exports.handler = async function(event, context) {
       return {
         statusCode: 500,
         headers,
-        body: JSON.stringify({ error: 'Server error: ' + error.message })
+        body: JSON.stringify({ 
+          success: false,
+          error: 'Server error: ' + error.message 
+        })
       };
     }
   }
 
-  return { statusCode: 405, headers, body: JSON.stringify({ error: 'Method not allowed' }) };
+  return { 
+    statusCode: 405, 
+    headers, 
+    body: JSON.stringify({ 
+      success: false,
+      error: 'Method not allowed' 
+    }) 
+  };
 };
