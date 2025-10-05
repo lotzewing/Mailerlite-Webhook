@@ -75,10 +75,30 @@ exports.handler = async function(event, context) {
           'Authorization': `Bearer ${process.env.MAILERLITE_API_KEY}`,
           'Accept': 'application/json'
         },
-        body: JSON.stringify({ email: email })
+        body: JSON.stringify({ 
+          email: email,
+          // This tells MailerLite to send confirmation email
+          resubscribe: false,
+          autoresponders: true,
+          // Optional: Add tracking fields
+          fields: {
+            source: 'Framer Website',
+            signup_date: new Date().toISOString().split('T')[0]
+          }
+        })
       });
 
       console.log('MailerLite status:', mailerliteResponse.status);
+
+      const mailerliteData = await mailerliteResponse.json();
+      console.log('MailerLite full response:', mailerliteData);
+
+      // Log the subscriber status
+      if (mailerliteData && mailerliteData.data) {
+        console.log('Subscriber status:', mailerliteData.data.status);
+        console.log('Subscriber type:', mailerliteData.data.type);
+        console.log('Subscriber source:', mailerliteData.data.source);
+      }
 
       if (mailerliteResponse.ok) {
         console.log('Successfully added to MailerLite');
@@ -87,7 +107,8 @@ exports.handler = async function(event, context) {
           headers,
           body: JSON.stringify({ 
             success: true,
-            message: 'Subscribed successfully' 
+            message: 'Subscribed successfully - please check your email to confirm',
+            subscriber_status: mailerliteData.data?.status
           })
         };
       } else {
