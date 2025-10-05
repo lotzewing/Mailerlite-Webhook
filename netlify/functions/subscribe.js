@@ -67,7 +67,7 @@ exports.handler = async function(event, context) {
         };
       }
 
-      console.log('Adding to MailerLite:', email);
+      console.log('Adding to MailerLite as UNCONFIRMED:', email);
       const mailerliteResponse = await fetch('https://connect.mailerlite.com/api/subscribers', {
         method: 'POST',
         headers: {
@@ -77,10 +77,11 @@ exports.handler = async function(event, context) {
         },
         body: JSON.stringify({ 
           email: email,
-          // This tells MailerLite to send confirmation email
+          // Force unconfirmed status to trigger confirmation email
+          status: 'unconfirmed',
           resubscribe: false,
           autoresponders: true,
-          // Optional: Add tracking fields
+          // Add source as API instead of manual
           fields: {
             source: 'Framer Website',
             signup_date: new Date().toISOString().split('T')[0]
@@ -96,7 +97,6 @@ exports.handler = async function(event, context) {
       // Log the subscriber status
       if (mailerliteData && mailerliteData.data) {
         console.log('Subscriber status:', mailerliteData.data.status);
-        console.log('Subscriber type:', mailerliteData.data.type);
         console.log('Subscriber source:', mailerliteData.data.source);
       }
 
